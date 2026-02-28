@@ -32,5 +32,41 @@
       "Novice Sorter"
     ],
     "joined": 1772264498
+  },
+  "suhaniborkar@gmail.com": {
+    "name": "suhani borkar",
+    "email": "suhaniborkar@gmail.com",
+    "state": "goa",
+    "district": "north goa",
+    "password": "63d2d590395ae60f8456bf408d45b6a2e2ec277ece07695a909a2b49ba6996cf",
+    "points": 10,
+    "exp": 20,
+    "level": 1,
+    "badges": [],
+    "joined": 1772267995
+  },
+  "vighneshc@gmaail.com": {
+    "name": "vighnesh",
+    "email": "vighneshc@gmaail.com",
+    "state": "goa",
+    "district": "north goa",
+    "password": "bc342fcf1f2aaa8e903fe7a48e045d95881107ec6625d95508204191b766bdc4",
+    "points": 0,
+    "exp": 0,
+    "level": 1,
+    "badges": [],
+    "joined": 1772269982
+  },
+  "vighnesh@gmaail.com": {
+    "name": "vighnesh",
+    "email": "vighnesh@gmaail.com",
+    "state": "goa",
+    "district": "north goa",
+    "password": "7fbc8b13a4dcbba2746d4dd08b2ea7d117d2a68e5f716b0f637762d00d0e4c51",
+    "points": 0,
+    "exp": 0,
+    "level": 1,
+    "badges": [],
+    "joined": 1772270435
   }
 }

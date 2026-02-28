@@ -33,5 +33,19 @@
       "timestamp": 1772264530,
       "time_label": "01:12 PM"
     }
-  ]
+  ],
+  "suhaniborkar@gmail.com": [
+    {
+      "item": "Plastic Wastebasket",
+      "category": "dry",
+      "reason": "It is made of rigid plastic, which is classified as dry recyclable waste.",
+      "instructions": "Place in a recycling bin designated for rigid plastics. Ensure it is clean and free of other waste before disposal.",
+      "points": 10,
+      "exp": 20,
+      "timestamp": 1772268013,
+      "time_label": "02:10 PM"
+    }
+  ],
+  "vighneshc@gmaail.com": [],
+  "vighnesh@gmaail.com": []
 }

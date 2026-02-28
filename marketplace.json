@@ -12,5 +12,20 @@
     "seller_email": "suhaniii@gmail.com",
     "created_at": 1772266430,
     "time_label": "Feb 28, 2026"
+  },
+  "6c7e6215f5d94543b3e993af1da1ca57": {
+    "id": "6c7e6215f5d94543b3e993af1da1ca57",
+    "title": "green dustbin",
+    "description": "excellent quality, barely used.",
+    "type": "donate",
+    "price": "Free",
+    "location": "margao goa",
+    "category": "plastic",
+    "image_url": "/static/uploads/c15b0f221e4b4da7be625e56d07e1f36.webp",
+    "seller_name": "suhani borkar",
+    "seller_email": "suhaniborkar@gmail.com",
+    "seller_phone": "2356789245",
+    "created_at": 1772268102,
+    "time_label": "Feb 28, 2026"
   }
 }
