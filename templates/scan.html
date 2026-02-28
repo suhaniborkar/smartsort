@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Scan AI &mdash; SmartSort{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-5xl mx-auto fade-in">
+
+    <div class="flex justify-between items-end mb-8">
+        <div>
+            <h1 class="text-4xl font-display font-bold text-white mb-2">AI Assistant</h1>
+            <p class="text-slate-400">Aim, capture, and let Gemini tell you how to dispose of it securely.</p>
+        </div>
+        <a href="{{ url_for('dashboard') }}"
+            class="text-slate-400 hover:text-white flex items-center gap-2 transition-colors">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Scanner Container -->
+    <div
+        class="glass-panel p-4 md:p-8 rounded-3xl min-h-[60vh] flex flex-col md:flex-row gap-8 relative overflow-hidden border border-white/10 group">
+
+        <!-- Live Camera / Video Element -->
+        <div class="w-full md:w-1/2 flex flex-col relative">
+            <div id="video-container"
+                class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                <!-- Idle State Overlay -->
+                <div id="camera-idle"
+                    class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80 z-10 transition-opacity duration-300">
+                    <div
+                        class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 border border-primary/20">
+                        <i data-lucide="camera" class="w-8 h-8 text-primary"></i>
+                    </div>
+                    <button id="btn-start" onclick="startCamera()"
+                        class="bg-primary hover:bg-primaryHover text-slate-900 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg">
+                        Enable Camera
+                    </button>
+                    <!-- Alternate file option -->
+                    <label
+                        class="mt-4 text-sm text-slate-400 hover:text-white cursor-pointer transition-colors flex items-center gap-1">
+                        <i data-lucide="upload" class="w-4 h-4"></i> Or upload an image
+                        <input type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                    </label>
+                </div>
+
+                <video id="videoElement" autoplay playsinline
+                    class="absolute inset-0 w-full h-full object-cover hidden"></video>
+                <img id="previewImage" src="" alt="Captured Image"
+                    class="absolute inset-0 w-full h-full object-cover hidden">
+                <canvas id="canvas" class="hidden"></canvas>
+
+                <!-- Scanning Animation Line -->
+                <div id="scan-line"
+                    class="absolute left-0 w-full h-1 bg-primary shadow-[0_0_20px_#10b981] animate-scan hidden z-20">
+                </div>
+
+                <!-- Camera Controls -->
+                <div id="camera-controls" class="absolute bottom-6 inset-x-0 flex justify-center gap-6 z-20 hidden">
+                    <button onclick="captureImage()"
+                        class="w-16 h-16 rounded-full bg-white/20 hover:bg-white/40 border-4 border-white backdrop-blur flex items-center justify-center transition-all">
+                        <div class="w-6 h-6 rounded-full bg-primary shadow-[0_0_10px_#10b981]"></div>
+                    </button>
+                    <button onclick="stopCamera()"
+                        class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-500 transition-all border border-white/10">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Assistant Results Panel -->
+        <div class="w-full md:w-1/2 flex flex-col justify-center min-h-[400px]">
+
+            <div id="ai-idle" class="text-center h-full flex flex-col justify-center items-center">
+                <i data-lucide="sparkles" class="w-12 h-12 text-slate-600 mb-4 opacity-50 pulse-glow"></i>
+                <h3 class="text-2xl font-display font-medium text-slate-400">Awaiting visual input...</h3>
+            </div>
+
+            <!-- Loading State -->
+            <div id="ai-loading" class="hidden text-center h-full flex flex-col justify-center items-center">
+                <i data-lucide="loader-2" class="w-12 h-12 text-primary animate-spin mb-4"></i>
+                <h3 class="text-2xl font-display font-medium text-emerald-400 mb-2">Gemini Pro is analyzing</h3>
+                <p class="text-slate-400 text-sm animate-pulse">Running object recognition vectors...</p>
+            </div>
+
+            <!-- Result Data -->
+            <div id="ai-result" class="hidden space-y-6 h-full flex flex-col justify-center slide-up">
+
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Identified
+                            Signature</p>
+                        <h2 id="res-item" class="text-3xl lg:text-4xl font-display font-bold text-white leading-none">
+                            Unknown</h2>
+                    </div>
+                    <span id="res-badge"
+                        class="px-4 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider text-xs rounded-xl">Unknown</span>
+                </div>
+
+                <div class="bg-black/30 rounded-2xl p-6 space-y-5 border border-white/5 relative overflow-hidden">
+                    <!-- Subtle bg decoration inside card -->
+                    <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <i data-lucide="info" class="w-32 h-32"></i>
+                    </div>
+
+                    <div class="flex gap-4 relative z-10">
+                        <i data-lucide="check-circle-2" class="w-6 h-6 text-primary flex-shrink-0 mt-0.5"></i>
+                        <div>
+                            <h4 class="font-bold text-white mb-2 uppercase tracking-wide text-xs opacity-70">Disposal
+                                Instructions</h4>
+                            <p id="res-instruction" class="text-slate-300 text-base leading-relaxed">No instructions.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="w-full h-px bg-white/10 relative z-10"></div>
+
+                    <div class="flex gap-4 relative z-10">
+                        <i data-lucide="shield-alert" id="risk-icon"
+                            class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5"></i>
+                        <div class="w-full">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="font-bold text-white uppercase tracking-wide text-xs opacity-70">
+                                    Contamination Risk</h4>
+                                <span id="res-risk"
+                                    class="text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Medium</span>
+                            </div>
+                            <p id="res-reason" class="text-slate-300 text-sm leading-relaxed">No reasoning provided.</p>
+                        </div>
+                    </div>
+
+                    <div class="w-full h-px bg-white/10 relative z-10"></div>
+
+                    <div class="flex gap-4 relative z-10">
+                        <i data-lucide="lightbulb" class="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5"></i>
+                        <div class="w-full">
+                            <h4 class="font-bold text-white mb-2 uppercase tracking-wide text-xs opacity-70">Recycling
+                                Tips</h4>
+                            <ul id="res-tips"
+                                class="list-disc list-inside text-slate-300 text-sm leading-relaxed space-y-1 mt-1">
+                                <!-- Populated dynamically -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="res-recyclable-box"
+                        class="col-span-1 bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col justify-center items-center text-primary shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-colors">
+                        <i id="res-recyclable-icon" data-lucide="recycle" class="w-8 h-8 mb-1"></i>
+                        <span id="res-recyclable-text" class="font-bold font-display text-lg">Recyclable</span>
+                    </div>
+
+                    <div
+                        class="col-span-1 bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex flex-row justify-center items-center gap-3 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.1)] overflow-hidden relative group">
+                        <div class="flex flex-col items-center">
+                            <span
+                                class="font-bold font-display text-[10px] opacity-80 uppercase tracking-widest">Points</span>
+                            <span class="font-bold font-display text-2xl">+10</span>
+                        </div>
+                        <div class="w-px h-8 bg-blue-500/20"></div>
+                        <div class="flex flex-col items-center">
+                            <span
+                                class="font-bold font-display text-[10px] opacity-80 uppercase tracking-widest">EXP</span>
+                            <span class="font-bold font-display text-2xl text-emerald-400">+20</span>
+                        </div>
+                        <!-- Decorative spark -->
+                        <div class="absolute -right-2 -top-2 opacity-20 group-hover:rotate-12 transition-transform">
+                            <i data-lucide="zap" class="w-12 h-12"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Level Up Notification (Hidden by default) -->
+                <div id="level-up-toast" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+                    <div
+                        class="bg-gradient-to-r from-yellow-400 to-orange-500 p-1 rounded-2xl shadow-[0_0_30px_rgba(251,191,36,0.5)]">
+                        <div class="bg-dark px-6 py-3 rounded-[0.9rem] flex items-center gap-3">
+                            <i data-lucide="star" class="text-yellow-400 fill-yellow-400 w-6 h-6"></i>
+                            <div class="text-left">
+                                <p
+                                    class="text-[10px] font-bold uppercase tracking-tight text-slate-400 leading-none mb-1">
+                                    Rank Up!</p>
+                                <h4 class="text-white font-bold text-lg leading-none">LEVEL <span
+                                        id="new-level-val">2</span></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/10 flex justify-between">
+                    <button onclick="resetScanner()"
+                        class="bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl font-medium transition-colors border border-white/10">
+                        Scan Another Object
+                    </button>
+                    <a href="{{ url_for('dashboard') }}"
+                        class="bg-primary hover:bg-primaryHover text-slate-900 px-6 py-3 rounded-xl font-bold transition-colors">
+                        Return to Dashboard
+                    </a>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const videoElem = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvas');
+    const previewImg = document.getElementById('previewImage');
+    let stream = null;
+
+    async function startCamera() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            videoElem.srcObject = stream;
+
+            document.getElementById('camera-idle').classList.add('hidden');
+            videoElem.classList.remove('hidden');
+            document.getElementById('camera-controls').classList.remove('hidden');
+            previewImg.classList.add('hidden');
+        } catch (err) {
+            alert("Could not access camera. Please make sure you have allowed camera permissions, or use the upload image option instead.");
+            console.error(err);
+        }
+    }
+
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        videoElem.classList.add('hidden');
+        document.getElementById('camera-controls').classList.add('hidden');
+        document.getElementById('camera-idle').classList.remove('hidden');
+    }
+
+    function captureImage() {
+        if (!stream) return;
+
+        // Draw to canvas
+        canvas.width = videoElem.videoWidth;
+        canvas.height = videoElem.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+
+        // Show static preview
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        previewImg.src = dataUrl;
+        previewImg.classList.remove('hidden');
+
+        stopCamera();
+        document.getElementById('camera-idle').classList.add('hidden');
+
+        // Start Analysis Process
+        canvas.toBlob((blob) => {
+            const file = new File([blob], "capture.jpg", { type: "image/jpeg" });
+            processImage(file);
+        }, 'image/jpeg');
+    }
+
+    function handleFileUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            previewImg.src = ev.target.result;
+            previewImg.classList.remove('hidden');
+            document.getElementById('camera-idle').classList.add('hidden');
+            processImage(file);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function processImage(file) {
+        // UI states
+        document.getElementById('ai-idle').classList.add('hidden');
+        document.getElementById('ai-result').classList.add('hidden');
+        document.getElementById('ai-loading').classList.remove('hidden');
+        document.getElementById('scan-line').classList.remove('hidden');
+
+        const formData = new FormData();
+        formData.append('image', file);
+        const uEmail = getCookie('user_email');
+
+        try {
+            // 1. Classify via Gemini
+            const res = await fetch('/api/classify', {
+                method: 'POST',
+                body: formData
+            });
+            const classData = await res.json();
+            if (!classData.success) throw new Error(classData.message || "Analysis failed.");
+
+            // 2. Save scan and award points/exp
+            const saveRes = await fetch('/api/save-scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: uEmail || 'guest@example.com',
+                    item: classData.item,
+                    category: classData.category,
+                    reason: classData.reason,
+                    instructions: classData.instructions
+                })
+            });
+            const rewardData = await saveRes.json();
+
+            // 3. Update UI
+            displayResultContent(classData, rewardData);
+
+        } catch (error) {
+            console.error(error);
+            alert("Error: " + error.message);
+            resetScanner();
+        } finally {
+            document.getElementById('ai-loading').classList.add('hidden');
+            document.getElementById('scan-line').classList.add('hidden');
+        }
+    }
+
+    function displayResultContent(data, rewards) {
+        document.getElementById('ai-result').classList.remove('hidden');
+        document.getElementById('res-item').innerText = data.item;
+        document.getElementById('res-instruction').innerText = data.instructions;
+        document.getElementById('res-reason').innerText = data.reason;
+
+        // Level Up Logic
+        if (rewards && rewards.level_up) {
+            const toast = document.getElementById('level-up-toast');
+            document.getElementById('new-level-val').innerText = rewards.level || '--';
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 5000);
+        }
+
+        // Recyclability Box
+        const recBox = document.getElementById('res-recyclable-box');
+        const recText = document.getElementById('res-recyclable-text');
+        const recIcon = document.getElementById('res-recyclable-icon');
+
+        if (data.recyclable) {
+            recBox.className = "col-span-1 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex flex-col justify-center items-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)] transition-colors";
+            recText.innerText = "Recyclable";
+            // Replace lucide icon element safely
+            recIcon.outerHTML = `<i id="res-recyclable-icon" data-lucide="recycle" class="w-8 h-8 mb-1"></i>`;
+        } else {
+            recBox.className = "col-span-1 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex flex-col justify-center items-center text-red-500 shadow-[0_0_20px_rgba(239,68,68,0.1)] transition-colors";
+            recText.innerText = "Non-Recyclable";
+            recIcon.outerHTML = `<i id="res-recyclable-icon" data-lucide="trash-2" class="w-8 h-8 mb-1"></i>`;
+        }
+
+        // Contamination Risk
+        const riskVal = data.contamination_risk || "Medium";
+        const riskSpan = document.getElementById('res-risk');
+        const riskIcon = document.getElementById('risk-icon');
+        riskSpan.innerText = riskVal;
+
+        if (riskVal === "Low") {
+            riskSpan.className = "text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400";
+            riskIcon.outerHTML = `<i data-lucide="shield-check" id="risk-icon" class="w-6 h-6 text-emerald-400 flex-shrink-0 mt-0.5"></i>`;
+        } else if (riskVal === "High") {
+            riskSpan.className = "text-xs font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-500";
+            riskIcon.outerHTML = `<i data-lucide="shield-alert" id="risk-icon" class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5"></i>`;
+        } else {
+            riskSpan.className = "text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400";
+            riskIcon.outerHTML = `<i data-lucide="shield-alert" id="risk-icon" class="w-6 h-6 text-yellow-500 flex-shrink-0 mt-0.5"></i>`;
+        }
+
+        // Refresh icons
+        lucide.createIcons();
+
+        // Tips Mapping
+        const tipsContainer = document.getElementById('res-tips');
+        tipsContainer.innerHTML = "";
+        if (data.tips && Array.isArray(data.tips) && data.tips.length > 0) {
+            data.tips.forEach(tip => {
+                tipsContainer.innerHTML += `<li>${tip}</li>`;
+            });
+        } else {
+            tipsContainer.innerHTML = `<li>No specific preparation tips needed.</li>`;
+        }
+
+        const badge = document.getElementById('res-badge');
+        badge.innerText = data.category + " Waste";
+
+        // Color coding
+        badge.className = "px-4 py-1.5 font-bold uppercase tracking-wider text-xs rounded-xl border ";
+        const cat = data.category.toLowerCase();
+        if (cat === 'dry') badge.className += "bg-blue-500/20 text-blue-400 border-blue-500/30";
+        else if (cat === 'wet') badge.className += "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+        else if (cat === 'ewaste') badge.className += "bg-purple-500/20 text-purple-400 border-purple-500/30";
+        else badge.className += "bg-red-500/20 text-red-500 border-red-500/30";
+
+        // Sync points in global nav immediately after
+        const navPoints = document.getElementById('nav-points-display');
+        if (navPoints) {
+            const current = parseInt(navPoints.innerText) || 0;
+            navPoints.innerText = current + 10;
+        }
+    }
+
+    function resetScanner() {
+        document.getElementById('ai-result').classList.add('hidden');
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('scan-line').classList.add('hidden');
+
+        previewImg.classList.add('hidden');
+        previewImg.src = "";
+
+        document.getElementById('ai-idle').classList.remove('hidden');
+        document.getElementById('camera-idle').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

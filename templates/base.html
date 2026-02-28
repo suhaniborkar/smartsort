@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SmartSort &mdash; AI Waste Analysis{% endblock %}</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Config for Custom Colors/Fonts -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0B0F19', /* Very sleek dark background */
+                        card: 'rgba(20, 25, 40, 0.4)',
+                        primary: '#10b981', /* Emerald 500 */
+                        primaryHover: '#059669',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'blob': 'blob 10s infinite alternate',
+                        'scan': 'scan 2.5s ease-in-out infinite',
+                        'pulse-glow': 'pulse-glow 3s infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '50%': { transform: 'translate(40px, -60px) scale(1.1)' },
+                            '100%': { transform: 'translate(-30px, 30px) scale(0.9)' },
+                        },
+                        scan: {
+                            '0%': { top: '0%' },
+                            '50%': { top: '100%' },
+                            '100%': { top: '0%' },
+                        },
+                        'pulse-glow': {
+                            '0%, 100%': { opacity: 1 },
+                            '50%': { opacity: 0.6 },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;800&display=swap');
+
+        body {
+            background-color: #0B0F19;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(20, 25, 40, 0.5);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input:focus {
+            outline: none;
+            border-color: #10b981;
+            box-shadow: 0 0 0 1px #10b981, inset 0 0 15px rgba(16, 185, 129, 0.1);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .slide-up {
+            animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0B0F19;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #10b981;
+        }
+    </style>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+
+<body class="min-h-screen relative font-sans antialiased text-slate-200">
+
+    <!-- Majestic Background Animated Blobs -->
+    <div class="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+        <div
+            class="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] bg-emerald-500 rounded-full mix-blend-screen filter blur-[140px] opacity-10 animate-blob">
+        </div>
+        <div class="absolute top-[30%] right-[-20%] w-[500px] h-[500px] bg-blue-600 rounded-full mix-blend-screen filter blur-[140px] opacity-10 animate-blob"
+            style="animation-delay: 3s;"></div>
+        <div class="absolute bottom-[-10%] left-[20%] w-[400px] h-[400px] bg-purple-600 rounded-full mix-blend-screen filter blur-[140px] opacity-10 animate-blob"
+            style="animation-delay: 6s;"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 w-full px-6 py-5 flex justify-between items-center max-w-7xl mx-auto slide-up">
+        <a href="{{ url_for('index') }}" class="flex items-center gap-3 cursor-pointer group">
+            <div
+                class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center border border-primary/30 group-hover:bg-primary/30 transition-colors">
+                <i data-lucide="leaf" class="text-primary w-6 h-6"></i>
+            </div>
+            <span
+                class="font-display font-bold text-2xl tracking-tight text-white group-hover:text-primary transition-colors">Smart<span
+                    class="text-primary">Sort</span></span>
+        </a>
+
+        <div class="flex gap-4 items-center">
+            {% if request.cookies.get('user_email') %}
+            <span
+                class="bg-primary/10 text-primary font-bold px-4 py-2 rounded-xl border border-primary/20 flex items-center gap-2">
+                <i data-lucide="award" class="w-4 h-4"></i> <span id="nav-points-display">--</span> pts
+            </span>
+            <a href="{{ url_for('dashboard') }}"
+                class="text-slate-300 hover:text-white transition-colors px-3 py-2 font-medium">Dashboard</a>
+            <a href="{{ url_for('rules') }}"
+                class="text-slate-300 hover:text-white transition-colors px-3 py-2 font-medium">Rule Book</a>
+            <a href="{{ url_for('scan') }}"
+                class="bg-primary hover:bg-primaryHover text-slate-900 transition-all font-semibold px-6 py-2.5 rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.25)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)]">
+                <i data-lucide="scan-line" class="w-4 h-4"></i> Scan
+            </a>
+            <a href="#" onclick="logout()" class="text-slate-500 hover:text-red-400 transition-colors p-2"
+                title="Logout">
+                <i data-lucide="log-out" class="w-5 h-5"></i>
+            </a>
+            {% else %}
+            <a href="{{ url_for('index') }}#auth"
+                class="bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white px-6 py-2.5 rounded-xl font-medium">
+                Log In
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Main Content Block -->
+    <main class="relative z-10 max-w-7xl mx-auto p-6 min-h-[80vh] flex flex-col justify-center">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        // Init Icons on load
+        document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+
+            // If logged in, fetch current points universally 
+            const userEmail = getCookie('user_email');
+            if (userEmail) {
+                fetch(`/api/points/${userEmail}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && document.getElementById('nav-points-display')) {
+                            document.getElementById('nav-points-display').innerText = data.points;
+                        }
+                    }).catch(console.error);
+            }
+        });
+
+        // Simple cookie getters & setters
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function logout() {
+            setCookie('user_email', '', -1);
+            setCookie('user_name', '', -1);
+            window.location.href = "{{ url_for('index') }}";
+        }
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+
+</body>
+
+</html>

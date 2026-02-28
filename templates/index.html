@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Landing Section -->
+<div id="landing" class="w-full text-center space-y-8 fade-in">
+    <div
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm text-emerald-400 mb-4 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+        <i data-lucide="sparkles" class="w-4 h-4"></i> AI-Powered Waste Classification
+    </div>
+
+    <h1 class="text-5xl lg:text-7xl font-display font-bold max-w-4xl mx-auto leading-tight">
+        Sort your waste <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">intelligently.</span>
+    </h1>
+
+    <p class="text-xl text-slate-400 max-w-2xl mx-auto font-light">
+        Aim your camera. Our AI instantly categorizes it, provides disposal instructions, and rewards your eco-friendly
+        choices.
+    </p>
+
+    <div class="flex justify-center gap-6 pt-6">
+        <a href="#auth" onclick="toggleAuth('signup')"
+            class="bg-primary hover:bg-primaryHover text-slate-900 px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center gap-2 hover:translate-y-[-2px]">
+            Join the Movement <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </a>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="pt-16 pb-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div class="glass-panel p-6 rounded-2xl flex flex-col items-center">
+            <i data-lucide="recycle" class="w-8 h-8 text-primary mb-3"></i>
+            <div class="text-4xl font-display font-bold text-white">{{ stats.items_sorted }}</div>
+            <div class="text-slate-400 text-sm mt-1">Items Sorted Globally</div>
+        </div>
+        <div class="glass-panel p-6 rounded-2xl flex flex-col items-center">
+            <i data-lucide="check-circle" class="w-8 h-8 text-blue-400 mb-3"></i>
+            <div class="text-4xl font-display font-bold text-white">{{ stats.recycled_properly }}</div>
+            <div class="text-slate-400 text-sm mt-1">Recycled Successfully</div>
+        </div>
+        <div class="glass-panel p-6 rounded-2xl flex flex-col items-center">
+            <i data-lucide="users" class="w-8 h-8 text-purple-400 mb-3"></i>
+            <div class="text-4xl font-display font-bold text-white">{{ stats.eco_users }}</div>
+            <div class="text-slate-400 text-sm mt-1">Active Eco-Warriors</div>
+        </div>
+    </div>
+</div>
+
+<!-- Authentication Section -->
+<div id="auth" class="w-full max-w-md mx-auto pt-24 pb-12 opacity-0 transition-opacity duration-500">
+    <div class="glass-panel p-8 md:p-10 rounded-3xl border border-white/10 relative overflow-hidden group">
+        <!-- Hover Glow -->
+        <div
+            class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none">
+        </div>
+
+        <div class="flex gap-6 mb-8 relative z-10 border-b border-white/10">
+            <button id="btn-login" onclick="toggleAuth('login')"
+                class="pb-3 text-lg font-display text-white border-b-2 border-primary transition-colors">Log In</button>
+            <button id="btn-signup" onclick="toggleAuth('signup')"
+                class="pb-3 text-lg font-display text-slate-500 border-b-2 border-transparent hover:text-white transition-colors">Sign
+                Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="form-login" class="space-y-5 relative z-10" onsubmit="handleLogin(event)">
+            <div>
+                <input type="email" id="l-email" required placeholder="Email Address"
+                    class="w-full glass-input rounded-xl px-4 py-3.5">
+            </div>
+            <div>
+                <input type="password" id="l-password" required placeholder="Password"
+                    class="w-full glass-input rounded-xl px-4 py-3.5">
+            </div>
+            <button type="submit"
+                class="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold px-4 py-4 rounded-xl transition-all mt-4 flex justify-center items-center gap-2">
+                Log In <i data-lucide="log-in" class="w-4 h-4"></i>
+            </button>
+            <p id="l-error" class="hidden text-red-400 text-sm text-center mt-2"></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="form-signup" class="space-y-4 relative z-10 hidden" onsubmit="handleSignup(event)">
+            <input type="text" id="s-name" required placeholder="Full Name"
+                class="w-full glass-input rounded-xl px-4 py-3.5">
+            <input type="email" id="s-email" required placeholder="Email Address"
+                class="w-full glass-input rounded-xl px-4 py-3.5">
+            <div class="grid grid-cols-2 gap-4">
+                <input type="text" id="s-state" required placeholder="State"
+                    class="w-full glass-input rounded-xl px-4 py-3.5">
+                <input type="text" id="s-district" required placeholder="District"
+                    class="w-full glass-input rounded-xl px-4 py-3.5">
+            </div>
+            <input type="password" id="s-password" required placeholder="Create Password"
+                class="w-full glass-input rounded-xl px-4 py-3.5">
+
+            <button type="submit"
+                class="w-full bg-primary hover:bg-primaryHover text-slate-900 font-bold px-4 py-4 rounded-xl transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] mt-4">
+                Create Account
+            </button>
+            <p id="s-error" class="hidden text-red-400 text-sm text-center mt-2"></p>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Smooth scroll observer for Auth section
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.remove('opacity-0');
+                entry.target.classList.add('opacity-100');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const authSec = document.getElementById('auth');
+        if (authSec) observer.observe(authSec);
+
+        // If hash is #auth, scroll and open it
+        if (window.location.hash === '#auth') {
+            setTimeout(() => {
+                authSec.scrollIntoView({ behavior: 'smooth' });
+                authSec.classList.remove('opacity-0');
+            }, 300);
+        }
+    });
+
+    let currentAuth = 'login';
+    function toggleAuth(type) {
+        currentAuth = type;
+        const btnL = document.getElementById('btn-login');
+        const btnS = document.getElementById('btn-signup');
+        const formL = document.getElementById('form-login');
+        const formS = document.getElementById('form-signup');
+
+        if (type === 'login') {
+            btnL.className = "pb-3 text-lg font-display text-white border-b-2 border-primary transition-colors";
+            btnS.className = "pb-3 text-lg font-display text-slate-500 border-b-2 border-transparent hover:text-white transition-colors";
+            formL.classList.remove('hidden');
+            formS.classList.add('hidden');
+        } else {
+            btnS.className = "pb-3 text-lg font-display text-white border-b-2 border-primary transition-colors";
+            btnL.className = "pb-3 text-lg font-display text-slate-500 border-b-2 border-transparent hover:text-white transition-colors";
+            formS.classList.remove('hidden');
+            formL.classList.add('hidden');
+        }
+    }
+
+    async function handleLogin(e) {
+        e.preventDefault();
+        const errP = document.getElementById('l-error');
+        errP.classList.add('hidden');
+        try {
+            const res = await fetch('/api/signin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('l-email').value,
+                    password: document.getElementById('l-password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setCookie('user_email', data.user.email, 7);
+                setCookie('user_name', data.user.name, 7);
+                window.location.href = "{{ url_for('dashboard') }}";
+            } else {
+                errP.innerText = data.message;
+                errP.classList.remove('hidden');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function handleSignup(e) {
+        e.preventDefault();
+        const errP = document.getElementById('s-error');
+        errP.classList.add('hidden');
+        try {
+            const res = await fetch('/api/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: document.getElementById('s-email').value,
+                    name: document.getElementById('s-name').value,
+                    state: document.getElementById('s-state').value,
+                    district: document.getElementById('s-district').value,
+                    password: document.getElementById('s-password').value
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setCookie('user_email', data.user.email, 7);
+                setCookie('user_name', data.user.name, 7);
+                window.location.href = "{{ url_for('dashboard') }}";
+            } else {
+                errP.innerText = data.message;
+                errP.classList.remove('hidden');
+            }
+        } catch (e) { console.error(e); }
+    }
+</script>
+{% endblock %}

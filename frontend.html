@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmartSort — Scan. Sort. Sustain.</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Benne&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:  rgba(129, 238, 134, 0.45);
+      --green-solid: #4caf50;
+      --yellow: rgba(244, 243, 147, 0.88);
+      --black:  #111;
+      --muted:  rgba(0,0,0,0.52);
+      --white:  #fff;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #f5f5ef;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── MAP BACKGROUND ── */
+    .map-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .map-bg svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0.09;
+    }
+
+    /* ── LAYOUT ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    /* ── HEADER ── */
+    header {
+      padding: 36px 60px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(64px, 9vw, 116px);
+      letter-spacing: 0.04em;
+      color: var(--black);
+      line-height: 1;
+      position: relative;
+      animation: fadeDown 0.7s ease both;
+    }
+    .logo span {
+      color: var(--green-solid);
+    }
+
+    .tagline {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(18px, 2.2vw, 32px);
+      letter-spacing: 0.18em;
+      color: var(--black);
+      opacity: 0.75;
+      margin-top: 2px;
+      animation: fadeDown 0.7s 0.1s ease both;
+    }
+
+    /* ── YELLOW BAND ── */
+    .yellow-band {
+      background: var(--yellow);
+      width: 100%;
+      margin-top: 28px;
+      padding: 10px 0 6px;
+      display: flex;
+      justify-content: center;
+      gap: 80px;
+      animation: fadeDown 0.7s 0.2s ease both;
+    }
+    .tab-btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(22px, 3vw, 42px);
+      letter-spacing: 0.08em;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--black);
+      opacity: 0.45;
+      transition: opacity 0.2s, transform 0.2s;
+      padding: 4px 12px;
+    }
+    .tab-btn.active {
+      opacity: 1;
+      border-bottom: 3px solid var(--green-solid);
+    }
+    .tab-btn:hover { opacity: 0.8; transform: translateY(-1px); }
+
+    /* ── FORMS AREA ── */
+    main {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 20px 60px;
+      animation: fadeUp 0.6s 0.3s ease both;
+    }
+
+    .form-card {
+      background: white;
+      border-radius: 24px;
+      padding: 44px 48px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+      position: relative;
+      overflow: hidden;
+    }
+    .form-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, #81ee86, #f4f393, #81ee86);
+      background-size: 200%;
+      animation: shimmer 3s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+
+    .form-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px;
+      letter-spacing: 0.12em;
+      color: var(--black);
+      margin-bottom: 28px;
+      opacity: 0.85;
+    }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── FIELDS ── */
+    .field {
+      margin-bottom: 16px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: var(--green);
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      padding: 18px 20px;
+      font-family: 'Benne', serif;
+      font-size: 16px;
+      color: var(--black);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .field input::placeholder, .field select option:first-child {
+      color: var(--muted);
+    }
+    .field select {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 40px;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--green-solid);
+      background: rgba(129, 238, 134, 0.28);
+    }
+
+    /* ── SUBMIT ── */
+    .submit-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 18px;
+      background: var(--black);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .submit-btn:hover {
+      background: #2c7a2c;
+      transform: translateY(-2px);
+    }
+    .submit-btn:active { transform: translateY(0); }
+
+    /* ── SWITCH LINK ── */
+    .switch-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .switch-link button {
+      background: none;
+      border: none;
+      color: var(--green-solid);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: underline;
+    }
+
+    /* ── SUCCESS SCREEN ── */
+    .success-screen {
+      display: none;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .success-screen.show { display: block; }
+    .success-icon {
+      font-size: 56px;
+      animation: pop 0.5s ease;
+    }
+    .success-screen h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 32px;
+      letter-spacing: 0.1em;
+      margin: 16px 0 8px;
+      color: var(--green-solid);
+    }
+    .success-screen p {
+      color: var(--muted);
+      font-size: 15px;
+      margin-bottom: 28px;
+    }
+    .go-btn {
+      display: inline-block;
+      padding: 16px 48px;
+      background: var(--green-solid);
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 22px;
+      letter-spacing: 0.1em;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .go-btn:hover { background: #388e3c; transform: translateY(-2px); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pop {
+      0%   { transform: scale(0.5); opacity: 0; }
+      70%  { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ── MAP SVG GRID ── */
+    .map-grid line { stroke: #333; }
+    .map-grid circle { fill: #333; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 600px) {
+      header { padding: 24px 20px 0; }
+      .form-card { padding: 32px 24px; }
+      .yellow-band { gap: 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Subtle map grid background -->
+<div class="map-bg">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" class="map-grid">
+    <!-- horizontal lines -->
+    <line x1="0" y1="100" x2="1440" y2="100" stroke-width="0.6"/>
+    <line x1="0" y1="200" x2="1440" y2="200" stroke-width="0.6"/>
+    <line x1="0" y1="300" x2="1440" y2="300" stroke-width="0.6"/>
+    <line x1="0" y1="400" x2="1440" y2="400" stroke-width="0.6"/>
+    <line x1="0" y1="500" x2="1440" y2="500" stroke-width="0.6"/>
+    <line x1="0" y1="600" x2="1440" y2="600" stroke-width="0.6"/>
+    <line x1="0" y1="700" x2="1440" y2="700" stroke-width="0.6"/>
+    <line x1="0" y1="800" x2="1440" y2="800" stroke-width="0.6"/>
+    <!-- vertical lines -->
+    <line x1="120" y1="0" x2="120" y2="900" stroke-width="0.6"/>
+    <line x1="280" y1="0" x2="280" y2="900" stroke-width="0.6"/>
+    <line x1="440" y1="0" x2="440" y2="900" stroke-width="0.6"/>
+    <line x1="600" y1="0" x2="600" y2="900" stroke-width="0.6"/>
+    <line x1="760" y1="0" x2="760" y2="900" stroke-width="0.6"/>
+    <line x1="920" y1="0" x2="920" y2="900" stroke-width="0.6"/>
+    <line x1="1080" y1="0" x2="1080" y2="900" stroke-width="0.6"/>
+    <line x1="1240" y1="0" x2="1240" y2="900" stroke-width="0.6"/>
+    <line x1="1400" y1="0" x2="1400" y2="900" stroke-width="0.6"/>
+    <!-- intersection dots -->
+    <circle cx="120" cy="100" r="2.5"/><circle cx="280" cy="100" r="2.5"/>
+    <circle cx="440" cy="100" r="2.5"/><circle cx="600" cy="100" r="2.5"/>
+    <circle cx="760" cy="100" r="2.5"/><circle cx="920" cy="100" r="2.5"/>
+    <circle cx="1080" cy="100" r="2.5"/><circle cx="1240" cy="100" r="2.5"/>
+    <circle cx="120" cy="300" r="2.5"/><circle cx="280" cy="300" r="2.5"/>
+    <circle cx="440" cy="300" r="2.5"/><circle cx="600" cy="300" r="2.5"/>
+    <circle cx="760" cy="300" r="2.5"/><circle cx="920" cy="300" r="2.5"/>
+    <circle cx="1080" cy="300" r="2.5"/><circle cx="1240" cy="300" r="2.5"/>
+    <circle cx="120" cy="500" r="2.5"/><circle cx="280" cy="500" r="2.5"/>
+    <circle cx="440" cy="500" r="2.5"/><circle cx="600" cy="500" r="2.5"/>
+    <circle cx="760" cy="500" r="2.5"/><circle cx="920" cy="500" r="2.5"/>
+    <circle cx="1080" cy="500" r="2.5"/><circle cx="1240" cy="500" r="2.5"/>
+    <circle cx="120" cy="700" r="2.5"/><circle cx="280" cy="700" r="2.5"/>
+    <circle cx="440" cy="700" r="2.5"/><circle cx="600" cy="700" r="2.5"/>
+    <circle cx="760" cy="700" r="2.5"/><circle cx="920" cy="700" r="2.5"/>
+    <circle cx="1080" cy="700" r="2.5"/><circle cx="1240" cy="700" r="2.5"/>
+    <!-- decorative location pins -->
+    <circle cx="360" cy="420" r="6" fill="#4caf50" opacity="0.4"/>
+    <circle cx="720" cy="260" r="6" fill="#4caf50" opacity="0.4"/>
+    <circle cx="1100" cy="560" r="6" fill="#4caf50" opacity="0.4"/>
+    <circle cx="200" cy="640" r="4" fill="#f4f393" opacity="0.6" stroke="#999" stroke-width="1"/>
+    <circle cx="960" cy="380" r="4" fill="#f4f393" opacity="0.6" stroke="#999" stroke-width="1"/>
+  </svg>
+</div>
+
+<div class="page">
+  <header>
+    <div class="logo">Smart<span>Sort</span></div>
+    <div class="tagline">Scan. Sort. Sustain.</div>
+
+    <div class="yellow-band">
+      <button class="tab-btn active" id="tab-signup" onclick="switchTab('signup')">Sign Up</button>
+      <button class="tab-btn" id="tab-signin" onclick="switchTab('signin')">Sign In</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="form-card">
+
+      <!-- SUCCESS -->
+      <div class="success-screen" id="success">
+        <div class="success-icon">♻️</div>
+        <h2>You're in!</h2>
+        <p id="success-msg">Welcome to SmartSort. Let's sort some waste.</p>
+        <a href="scan.html" class="go-btn">Start Scanning →</a>
+      </div>
+
+      <!-- SIGN UP -->
+      <div class="panel active" id="panel-signup">
+        <div class="form-title">Create Account</div>
+        <form onsubmit="handleSignup(event)">
+          <div class="field">
+            <input type="text" id="su-name" placeholder="enter your full name" required />
+          </div>
+          <div class="field">
+            <input type="text" id="su-email" placeholder="enter your email address or mobile number" required />
+          </div>
+          <div class="field">
+            <select id="su-state" required>
+              <option value="" disabled selected>choose your state</option>
+              <option>Andhra Pradesh</option><option>Assam</option>
+              <option>Bihar</option><option>Chhattisgarh</option>
+              <option>Delhi</option><option>Goa</option>
+              <option>Gujarat</option><option>Haryana</option>
+              <option>Himachal Pradesh</option><option>Jharkhand</option>
+              <option>Karnataka</option><option>Kerala</option>
+              <option>Madhya Pradesh</option><option>Maharashtra</option>
+              <option>Manipur</option><option>Meghalaya</option>
+              <option>Odisha</option><option>Punjab</option>
+              <option>Rajasthan</option><option>Tamil Nadu</option>
+              <option>Telangana</option><option>Uttar Pradesh</option>
+              <option>Uttarakhand</option><option>West Bengal</option>
+            </select>
+          </div>
+          <div class="field">
+            <input type="text" id="su-district" placeholder="choose your district" required />
+          </div>
+          <div class="field">
+            <input type="password" id="su-password" placeholder="set a strong password" required />
+          </div>
+          <button type="submit" class="submit-btn">Create Account →</button>
+        </form>
+        <div class="switch-link">
+          Already have an account?
+          <button onclick="switchTab('signin')">Sign in here</button>
+        </div>
+      </div>
+
+      <!-- SIGN IN -->
+      <div class="panel" id="panel-signin">
+        <div class="form-title">Welcome Back</div>
+        <form onsubmit="handleSignin(event)">
+          <div class="field">
+            <input type="text" id="si-email" placeholder="enter your email address or mobile number" required />
+          </div>
+          <div class="field">
+            <input type="password" id="si-password" placeholder="enter your password" required />
+          </div>
+          <button type="submit" class="submit-btn">Sign In →</button>
+        </form>
+        <div class="switch-link">
+          New here?
+          <button onclick="switchTab('signup')">Create an account</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  function switchTab(tab) {
+    document.getElementById('panel-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('panel-signin').classList.toggle('active', tab === 'signin');
+    document.getElementById('tab-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('tab-signin').classList.toggle('active', tab === 'signin');
+    document.getElementById('success').classList.remove('show');
+  }
+
+  function showSuccess(name) {
+    document.getElementById('panel-signup').classList.remove('active');
+    document.getElementById('panel-signin').classList.remove('active');
+    document.getElementById('success-msg').textContent =
+      `Welcome, ${name}! Let's sort some waste.`;
+    document.getElementById('success').classList.add('show');
+  }
+
+  function handleSignup(e) {
+    e.preventDefault();
+    const name  = document.getElementById('su-name').value.trim();
+    const email = document.getElementById('su-email').value.trim();
+    const state = document.getElementById('su-state').value;
+    const dist  = document.getElementById('su-district').value.trim();
+    const pass  = document.getElementById('su-password').value;
+
+    // Save to localStorage so scan page can use name + location
+    localStorage.setItem('ss_user', JSON.stringify({ name, email, state, district: dist }));
+    showSuccess(name);
+  }
+
+  function handleSignin(e) {
+    e.preventDefault();
+    const email = document.getElementById('si-email').value.trim();
+    // Try to load existing user
+    const stored = JSON.parse(localStorage.getItem('ss_user') || '{}');
+    const name = stored.name || email.split('@')[0] || 'there';
+    localStorage.setItem('ss_user', JSON.stringify({ ...stored, email }));
+    showSuccess(name);
+  }
+</script>
+
+</body>
+</html>

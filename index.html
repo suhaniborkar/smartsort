@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartSort - AI Waste Analysis</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Config for Custom Colors/Fonts -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0f172a',
+                        card: 'rgba(30, 41, 59, 0.7)',
+                        primary: '#10b981', // Emerald 500
+                        primaryHover: '#059669',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'scan': 'scan 2s linear infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        scan: {
+                            '0%': { top: '0%' },
+                            '50%': { top: '100%' },
+                            '100%': { top: '0%' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;800&display=swap');
+        
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .hide { display: none !important; }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+    </style>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="min-h-screen relative font-sans antialiased text-slate-200">
+
+    <!-- Background Animated Blobs -->
+    <div class="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-emerald-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob"></div>
+        <div class="absolute top-[20%] right-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob" style="animation-delay: 2s;"></div>
+        <div class="absolute bottom-[-20%] left-[20%] w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-blob" style="animation-delay: 4s;"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="relative z-10 w-full p-6 flex justify-between items-center max-w-7xl mx-auto">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="showScreen('landing')">
+            <i data-lucide="leaf" class="text-primary w-8 h-8"></i>
+            <span class="font-display font-bold text-2xl tracking-tight">Smart<span class="text-primary">Sort</span></span>
+        </div>
+        <div class="flex gap-4 items-center">
+            <span id="nav-points" class="hide bg-primary/20 text-primary font-bold px-4 py-2 rounded-lg border border-primary/30 flex items-center gap-2">
+                <i data-lucide="award" class="w-5 h-5"></i> <span id="points-display">0</span> pts
+            </span>
+            <button id="nav-login-btn" onclick="showScreen('auth')" class="bg-white/5 hover:bg-white/10 border border-white/10 transition-all text-white px-6 py-2 rounded-xl font-medium">Log In</button>
+            <button id="nav-scan-btn" onclick="showScreen('scanner')" class="hide bg-primary hover:bg-primaryHover text-slate-900 transition-all font-semibold px-6 py-2 rounded-xl flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                <i data-lucide="camera" class="w-4 h-4"></i> Scan
+            </button>
+        </div>
+    </nav>
+
+    <main class="relative z-10 max-w-7xl mx-auto p-6 min-h-[80vh] flex flex-col items-center justify-center">
+
+        <!-- 1. LANDING SCREEN -->
+        <div id="screen-landing" class="w-full text-center space-y-8 fade-in">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-sm text-emerald-400 mb-4 border-emerald-500/20">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> AI-Powered Waste Classification
+            </div>
+            <h1 class="text-5xl md:text-7xl font-display font-bold max-w-4xl mx-auto leading-tight">
+                Sort your waste <span class="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500">intelligently.</span>
+            </h1>
+            <p class="text-xl text-slate-400 max-w-2xl mx-auto font-light">
+                Scan any item with your camera. Our AI instantly categorizes it, tells you how to dispose of it, and rewards you with eco-points.
+            </p>
+            <div class="flex justify-center gap-4 pt-4">
+                <button onclick="showScreen('auth')" class="bg-primary hover:bg-primaryHover text-slate-900 px-8 py-4 rounded-xl font-bold text-lg transition-all shadow-[0_0_30px_rgba(16,185,129,0.4)] flex items-center gap-2">
+                    Get Started <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. AUTH SCREEN -->
+        <div id="screen-auth" class="w-full max-w-md hide fade-in">
+            <div class="glass-panel p-8 rounded-2xl border border-white/10 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                
+                <h2 class="text-3xl font-display font-bold mb-2">Welcome</h2>
+                <p class="text-slate-400 mb-8">Enter your details to start earning points.</p>
+
+                <form id="auth-form" class="space-y-4 relative z-10" onsubmit="handleAuth(event)">
+                    <div>
+                        <input type="email" id="email" required placeholder="Email Address" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <div>
+                        <input type="password" id="password" required placeholder="Password" class="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                    </div>
+                    <button type="submit" class="w-full bg-slate-100 hover:bg-white text-slate-900 font-bold px-4 py-3 rounded-xl transition-all mt-4">
+                        Continue
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. SCANNER SCREEN -->
+        <div id="screen-scanner" class="w-full max-w-5xl hide fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                
+                <!-- Left: Image Preview / Camera -->
+                <div class="glass-panel p-6 rounded-2xl flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden border border-white/10 w-full group">
+                    
+                    <div id="scan-idle" class="text-center w-full">
+                        <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="focus" class="w-10 h-10 text-primary"></i>
+                        </div>
+                        <h3 class="text-2xl font-display font-semibold mb-2">Upload or Scan</h3>
+                        <p class="text-slate-400 text-sm mb-8 px-4">Take a photo of the item you want to throw away.</p>
+                        
+                        <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                        <button onclick="document.getElementById('file-input').click()" class="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 mx-auto">
+                            <i data-lucide="image-plus" class="w-5 h-5"></i> Select Image
+                        </button>
+                    </div>
+
+                    <!-- Preview Container -->
+                    <div id="scan-preview-container" class="hide w-full h-full absolute inset-0 bg-black">
+                        <img id="scan-preview-img" class="w-full h-full object-contain" src="" alt="Scan Preview">
+                        
+                        <!-- Scanning Animation Overlay -->
+                        <div id="scan-loading" class="hide absolute inset-0 bg-primary/10 backdrop-blur-[2px] z-10">
+                            <!-- Scanning line -->
+                            <div class="absolute left-0 w-full h-1 bg-primary shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-scan"></div>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                <i data-lucide="loader-2" class="w-10 h-10 text-primary animate-spin mb-4"></i>
+                                <div class="bg-black/60 px-4 py-2 rounded-lg font-medium text-emerald-400 backdrop-blur-md">
+                                    AI is analyzing...
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="scan-clear-btn" onclick="clearScan()" class="absolute top-4 right-4 bg-black/50 hover:bg-black/80 p-2 rounded-full text-white backdrop-blur-md transition-all z-20">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Results Panel -->
+                <div class="glass-panel p-8 rounded-2xl min-h-[400px] flex flex-col justify-center border border-white/10 relative">
+                    
+                    <div id="result-idle" class="text-center">
+                        <i data-lucide="zap" class="w-12 h-12 text-slate-600 mx-auto mb-4 opacity-50"></i>
+                        <h3 class="text-xl font-display font-medium text-slate-400">Analysis results will appear here</h3>
+                    </div>
+
+                    <div id="result-content" class="hide space-y-6 fade-in">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">Identified Item</p>
+                                <h2 id="res-item" class="text-3xl font-display font-bold text-white">Plastic Bottle</h2>
+                            </div>
+                            <span id="res-badge" class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold uppercase tracking-wider text-xs rounded-lg">Dry Waste</span>
+                        </div>
+
+                        <div class="bg-black/30 rounded-xl p-5 space-y-4 border border-white/5">
+                            <div class="flex gap-3">
+                                <i data-lucide="check-circle-2" class="w-5 h-5 text-primary flex-shrink-0 mt-0.5"></i>
+                                <div>
+                                    <h4 class="font-semibold text-white text-sm mb-1">Instruction</h4>
+                                    <p id="res-instruction" class="text-slate-300 text-sm leading-relaxed">Rinse the bottle, crush it to save space, and place it in the blue recycling bin.</p>
+                                </div>
+                            </div>
+                            <div class="w-full h-px bg-white/5"></div>
+                            <div class="flex gap-3">
+                                <i data-lucide="info" class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5"></i>
+                                <div>
+                                    <h4 class="font-semibold text-white text-sm mb-1">Why?</h4>
+                                    <p id="res-reason" class="text-slate-300 text-sm leading-relaxed">PET plastic is 100% recyclable if kept clean and dry.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between text-primary">
+                            <span class="font-semibold flex items-center gap-2">
+                                <i data-lucide="party-popper" class="w-5 h-5"></i> Points Earned!
+                            </span>
+                            <span class="font-bold font-display text-xl">+10</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // State Management
+        let currentUser = null;
+        let selectedFile = null;
+
+        // On Load
+        document.addEventListener("DOMContentLoaded", () => {
+            const storedUser = localStorage.getItem('ss_user_ai');
+            if(storedUser) {
+                currentUser = JSON.parse(storedUser);
+                updateNav();
+                showScreen('scanner');
+            }
+        });
+
+        function updateNav() {
+            if(currentUser) {
+                document.getElementById('nav-login-btn').classList.add('hide');
+                document.getElementById('nav-scan-btn').classList.remove('hide');
+                document.getElementById('nav-points').classList.remove('hide');
+                // Fetch points
+                fetch(`http://127.0.0.1:5000/history/${currentUser.email}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        document.getElementById('points-display').innerText = data.points || 0;
+                    }).catch(console.error);
+            } else {
+                document.getElementById('nav-login-btn').classList.remove('hide');
+                document.getElementById('nav-scan-btn').classList.add('hide');
+                document.getElementById('nav-points').classList.add('hide');
+            }
+        }
+
+        function showScreen(screenId) {
+            const screens = ['landing', 'auth', 'scanner'];
+            screens.forEach(s => {
+                document.getElementById(`screen-${s}`).classList.add('hide');
+            });
+            document.getElementById(`screen-${screenId}`).classList.remove('hide');
+        }
+
+        function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            currentUser = { email: email, name: email.split('@')[0] };
+            localStorage.setItem('ss_user_ai', JSON.stringify(currentUser));
+            updateNav();
+            showScreen('scanner');
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            selectedFile = file;
+
+            // Show Preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('scan-preview-img').src = e.target.result;
+                document.getElementById('scan-idle').classList.add('hide');
+                document.getElementById('scan-preview-container').classList.remove('hide');
+                
+                // Start Analysis Automatically
+                analyzeImage(file);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearScan() {
+            selectedFile = null;
+            document.getElementById('scan-preview-img').src = "";
+            document.getElementById('scan-idle').classList.remove('hide');
+            document.getElementById('scan-preview-container').classList.add('hide');
+            
+            document.getElementById('result-idle').classList.remove('hide');
+            document.getElementById('result-content').classList.add('hide');
+            document.getElementById('file-input').value = "";
+        }
+
+        async function analyzeImage(file) {
+            // UI Loading state
+            document.getElementById('scan-loading').classList.remove('hide');
+            document.getElementById('scan-clear-btn').classList.add('hide');
+            document.getElementById('result-idle').classList.add('hide');
+            document.getElementById('result-content').classList.add('hide');
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('email', currentUser ? currentUser.email : 'guest@example.com');
+
+            try {
+                // 1) Classify using Flask backend (which uses Gemini)
+                const res = await fetch('http://127.0.0.1:5000/classify', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if(!data.success) throw new Error(data.message || "Failed to classify");
+
+                // 2) Save scan & update points
+                if(currentUser) {
+                     await fetch('http://127.0.0.1:5000/save-scan', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            email: currentUser.email,
+                            item: data.item,
+                            category: data.category,
+                            reason: data.reason,
+                            instructions: data.instructions
+                        })
+                    });
+                    updateNav(); // refresh points
+                }
+
+                // Display Results
+                displayResults(data);
+
+            } catch(err) {
+                console.error(err);
+                alert("Error analyzing image: " + err.message + "\n\nMake sure your Flask backend is running and the GEMINI_API_KEY is set in your .env file.");
+                clearScan();
+            } finally {
+                document.getElementById('scan-loading').classList.add('hide');
+                document.getElementById('scan-clear-btn').classList.remove('hide');
+            }
+        }
+
+        function displayResults(data) {
+            document.getElementById('res-item').innerText = data.item;
+            document.getElementById('res-instruction').innerText = data.instructions;
+            document.getElementById('res-reason').innerText = data.reason;
+            
+            const badge = document.getElementById('res-badge');
+            badge.innerText = data.category + " Waste";
+            
+            // set colors based on category
+            badge.className = "px-3 py-1 font-bold uppercase tracking-wider text-xs rounded-lg border ";
+            const cat = data.category.toLowerCase();
+            if(cat === 'dry') badge.className += "bg-blue-500/20 text-blue-400 border-blue-500/30";
+            else if(cat === 'wet') badge.className += "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+            else if(cat === 'ewaste') badge.className += "bg-purple-500/20 text-purple-400 border-purple-500/30";
+            else badge.className += "bg-red-500/20 text-red-400 border-red-500/30";
+
+            // Show result panel
+            document.getElementById('result-idle').classList.add('hide');
+            document.getElementById('result-content').classList.remove('hide');
+        }
+
+    </script>
+</body>
+</html>
