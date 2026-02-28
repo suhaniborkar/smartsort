@@ -12,8 +12,11 @@ CORS(app)
 
 # ── SIMPLE FILE-BASED DATABASE ─────────────────────────────
 # No SQL needed — just JSON files. Perfect for hackathon.
-DB_FILE   = "users.json"
-SCAN_FILE = "scans.json"
+DB_FILE    = "users.json"
+SCAN_FILE  = "scans.json"
+MKT_FILE   = "marketplace.json"
+UPLOAD_DIR = os.path.join("static", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def load(file):
     if not os.path.exists(file):
@@ -45,25 +48,81 @@ def get_global_stats():
         "eco_users": len(users)
     }
 
+def calculate_streak(scan_history):
+    """Returns current consecutive-day streak based on scan timestamps."""
+    if not scan_history:
+        return 0
+    from datetime import datetime, timedelta
+    # Get unique days (UTC date strings) of scans
+    days = sorted(set(
+        datetime.utcfromtimestamp(s["timestamp"]).strftime("%Y-%m-%d")
+        for s in scan_history if "timestamp" in s
+    ), reverse=True)
+    if not days:
+        return 0
+    streak = 1
+    for i in range(1, len(days)):
+        prev = datetime.strptime(days[i - 1], "%Y-%m-%d")
+        curr = datetime.strptime(days[i], "%Y-%m-%d")
+        if (prev - curr).days == 1:
+            streak += 1
+        else:
+            break
+    # If the latest scan wasn't today or yesterday, streak is broken
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+    if days[0] not in (today, yesterday):
+        return 0
+    return streak
+
+# Badge definitions: (id, label, icon, description, check_fn)
+ALL_BADGES = [
+    ("first_scan",    "First Sort!",       "star",          "Sorted your very first item"),
+    ("scans_5",       "Getting Started",   "zap",           "Sorted 5 items"),
+    ("scans_10",      "Sorting Buff",      "award",         "Sorted 10 items"),
+    ("scans_20",      "Eco Enthusiast",    "leaf",          "Sorted 20 items"),
+    ("scans_50",      "Sorting Legend",    "trophy",        "Sorted 50 items"),
+    ("points_100",    "Century Club",      "badge-check",   "Earned 100 points"),
+    ("points_500",    "High Scorer",       "flame",         "Earned 500 points"),
+    ("streak_3",      "3-Day Streak",      "calendar-check","Sorted 3 days in a row"),
+    ("streak_7",      "Week Warrior",      "calendar-days", "Sorted 7 days in a row"),
+    ("ewaste_sort",   "E-Waste Guardian",  "cpu",           "Sorted an E-Waste item"),
+    ("hazard_sort",   "Hazard Handler",    "shield-alert",  "Safely disposed a hazardous item"),
+    ("level_5",       "Level 5 Hero",      "rocket",        "Reached Level 5"),
+]
+
 def calculate_level(exp):
     return math.floor(exp / 50) + 1  # Level up every 50 XP (roughly every 2-3 scans)
 
 def check_badge_unlocks(user, scan_history):
+    """Check all badge milestones and return list of newly-unlocked badge IDs."""
     new_badges = []
-    badges = user.get("badges", [])
-    
-    # Badge: Novice Sorter (1st scan)
-    if len(scan_history) >= 1 and "Novice Sorter" not in badges:
-        new_badges.append("Novice Sorter")
-        
-    # Badge: Recycling Pro (5 scans)
-    if len(scan_history) >= 5 and "Recycling Pro" not in badges:
-        new_badges.append("Recycling Pro")
-        
-    # Badge: Eco Hero (10 scans)
-    if len(scan_history) >= 10 and "Eco Hero" not in badges:
-        new_badges.append("Eco Hero")
-        
+    earned = set(user.get("badges", []))
+    points  = user.get("points", 0)
+    level   = user.get("level", 1)
+    streak  = calculate_streak(scan_history)
+    n       = len(scan_history)
+    cats    = [s.get("category", "") for s in scan_history]
+
+    checks = {
+        "first_scan":  n >= 1,
+        "scans_5":     n >= 5,
+        "scans_10":    n >= 10,
+        "scans_20":    n >= 20,
+        "scans_50":    n >= 50,
+        "points_100":  points >= 100,
+        "points_500":  points >= 500,
+        "streak_3":    streak >= 3,
+        "streak_7":    streak >= 7,
+        "ewaste_sort": "ewaste" in cats,
+        "hazard_sort": "hazardous" in cats,
+        "level_5":     level >= 5,
+    }
+
+    for badge_id, condition in checks.items():
+        if condition and badge_id not in earned:
+            new_badges.append(badge_id)
+
     return new_badges
 
 # ══════════════════════════════════════════════════════════
@@ -111,6 +170,8 @@ def dashboard():
         reverse=True
     )
     
+    streak = calculate_streak(history)
+
     return render_template("dashboard.html", 
                            user=user, 
                            history=history[:15], 
@@ -119,6 +180,8 @@ def dashboard():
                            exp=user["exp"],
                            progress_percent=progress_percent,
                            badges=user["badges"],
+                           all_badges=ALL_BADGES,
+                           streak=streak,
                            total_scans=len(history),
                            leaderboard=ranked[:5])
 
@@ -133,6 +196,99 @@ def scan():
 def rules():
     return render_template("rules.html")
 
+@app.route("/marketplace")
+def marketplace():
+    return render_template("marketplace.html")
+
+
+# ══════════════════════════════════════════════════════════
+# MARKETPLACE API ROUTES
+# ══════════════════════════════════════════════════════════
+
+@app.route("/api/marketplace/listings", methods=["GET"])
+def marketplace_listings():
+    """Return all active marketplace listings."""
+    mkt = load(MKT_FILE)
+    items = list(mkt.values())
+    # newest first
+    items.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+    return jsonify({"success": True, "listings": items})
+
+@app.route("/api/marketplace/create", methods=["POST"])
+def marketplace_create():
+    """Create a new listing with optional image upload."""
+    import uuid
+    user_email = request.form.get("email", "").strip().lower()
+    title      = request.form.get("title", "").strip()
+    desc       = request.form.get("description", "").strip()
+    listing_type = request.form.get("type", "donate")
+    price      = request.form.get("price", "0").strip()
+    location   = request.form.get("location", "").strip()
+    category   = request.form.get("category", "other").strip()
+    phone      = request.form.get("phone", "").strip()
+
+    if not all([user_email, title, location]):
+        return jsonify({"success": False, "message": "Title, email and location are required"}), 400
+
+    users = load(DB_FILE)
+    if user_email not in users:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
+    seller_name = users[user_email]["name"]
+
+    # Handle image
+    image_url = None
+    if "image" in request.files:
+        file = request.files["image"]
+        if file and file.filename:
+            ext = file.filename.rsplit(".", 1)[-1].lower()
+            if ext in ("jpg", "jpeg", "png", "webp", "gif"):
+                fname = f"{uuid.uuid4().hex}.{ext}"
+                file.save(os.path.join(UPLOAD_DIR, fname))
+                image_url = f"/static/uploads/{fname}"
+
+    listing_id = uuid.uuid4().hex
+    listing = {
+        "id":           listing_id,
+        "title":        title,
+        "description":  desc,
+        "type":         listing_type,
+        "price":        price if listing_type == "sell" else "Free",
+        "location":     location,
+        "category":     category,
+        "image_url":    image_url,
+        "seller_name":  seller_name,
+        "seller_email": user_email,
+        "seller_phone": phone,
+        "created_at":   int(time.time()),
+        "time_label":   time.strftime("%b %d, %Y"),
+    }
+
+
+    mkt = load(MKT_FILE)
+    mkt[listing_id] = listing
+    save(MKT_FILE, mkt)
+
+    return jsonify({"success": True, "listing": listing})
+
+@app.route("/api/marketplace/delete/<listing_id>", methods=["DELETE"])
+def marketplace_delete(listing_id):
+    """Owner can delete their listing."""
+    user_email = request.json.get("email", "").strip().lower()
+    mkt = load(MKT_FILE)
+    if listing_id not in mkt:
+        return jsonify({"success": False, "message": "Listing not found"}), 404
+    if mkt[listing_id]["seller_email"] != user_email:
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+    # Delete image file too
+    img = mkt[listing_id].get("image_url", "")
+    if img:
+        path = img.lstrip("/")
+        if os.path.exists(path):
+            os.remove(path)
+    del mkt[listing_id]
+    save(MKT_FILE, mkt)
+    return jsonify({"success": True})
 
 # ══════════════════════════════════════════════════════════
 # API ROUTES (AJAX calls from the frontend)
@@ -278,6 +434,21 @@ def classify():
         return jsonify(result)
     else:
         return jsonify({"success": False, "message": result.get("error", "Failed to classify")}), 500
+
+
+@app.route("/api/lookup", methods=["POST"])
+def lookup_item():
+    """Accepts an item name as text and classifies it using Gemini."""
+    data = request.json
+    item_name = data.get("item", "").strip()
+    if not item_name:
+        return jsonify({"success": False, "message": "Item name is required"}), 400
+
+    result = gemini_helper.classify_waste_by_name(item_name)
+    if result.get("success"):
+        return jsonify(result)
+    else:
+        return jsonify({"success": False, "message": result.get("error", "Classification failed")}), 500
 
 
 @app.route("/api/history/<email>", methods=["GET"])

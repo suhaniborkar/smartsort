@@ -16,11 +16,101 @@
         </p>
     </div>
 
-    <!-- Search / Filter (Visual Only for now) -->
-    <div class="glass-panel p-4 rounded-2xl flex items-center gap-4">
-        <i data-lucide="search" class="text-slate-400 w-5 h-5"></i>
-        <input type="text" placeholder="Search for an item (e.g., Pizza Box, Battery)..."
-            class="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-600 font-medium">
+    <!-- AI Item Lookup -->
+    <div class="relative">
+        <div
+            class="glass-panel rounded-2xl overflow-hidden border border-white/10 focus-within:border-primary/50 transition-all duration-300 shadow-[0_0_0_0_rgba(16,185,129,0)] focus-within:shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+            <div class="flex items-center gap-4 p-4">
+                <i data-lucide="search" class="text-slate-400 w-5 h-5 shrink-0"></i>
+                <input id="lookup-input" type="text"
+                    placeholder="Type any item (e.g. Pizza Box, Lithium Battery, Insulin Syringe)..."
+                    class="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-600 font-medium text-lg"
+                    onkeydown="if(event.key==='Enter') runLookup()" autocomplete="off">
+                <button id="lookup-btn" onclick="runLookup()"
+                    class="shrink-0 bg-primary hover:bg-primaryHover text-slate-900 font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all active:scale-95">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    <span>Classify</span>
+                </button>
+            </div>
+            <!-- Loading Bar -->
+            <div id="lookup-loading-bar"
+                class="hidden h-1 w-full bg-gradient-to-r from-primary via-blue-500 to-primary bg-[length:200%] animate-[shimmer_1.5s_infinite]">
+            </div>
+        </div>
+
+        <!-- Result Card -->
+        <div id="lookup-result" class="hidden mt-4">
+            <div class="glass-panel rounded-3xl border border-white/10 overflow-hidden">
+                <!-- Top colored banner with item name + category badge -->
+                <div id="lr-banner"
+                    class="p-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border-b border-white/5 flex flex-wrap justify-between items-center gap-4">
+                    <div>
+                        <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Classified Item</p>
+                        <h2 id="lr-name" class="text-2xl font-display font-bold text-white">--</h2>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span id="lr-category-badge"
+                            class="px-4 py-1.5 font-bold uppercase tracking-wider text-xs rounded-xl border">--</span>
+                        <span id="lr-recyclable-badge" class="px-4 py-1.5 font-bold text-xs rounded-xl border">--</span>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Instructions + Reason -->
+                    <div class="space-y-5">
+                        <div>
+                            <h4
+                                class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-primary"></i> How to Dispose
+                            </h4>
+                            <p id="lr-instructions" class="text-slate-300 leading-relaxed"></p>
+                        </div>
+                        <div>
+                            <h4
+                                class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+                                <i data-lucide="info" class="w-4 h-4 text-blue-400"></i> Why This Category
+                            </h4>
+                            <p id="lr-reason" class="text-slate-400 text-sm leading-relaxed"></p>
+                        </div>
+                        <!-- Contamination Risk -->
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="shield-alert" id="lr-risk-icon"
+                                class="w-5 h-5 text-yellow-500 shrink-0"></i>
+                            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Contamination
+                                Risk:</span>
+                            <span id="lr-risk"
+                                class="text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400">--</span>
+                        </div>
+                    </div>
+
+                    <!-- Tips + Do Nots -->
+                    <div class="space-y-5">
+                        <div>
+                            <h4
+                                class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+                                <i data-lucide="lightbulb" class="w-4 h-4 text-amber-400"></i> Preparation Tips
+                            </h4>
+                            <ul id="lr-tips" class="space-y-2"></ul>
+                        </div>
+                        <div>
+                            <h4
+                                class="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+                                <i data-lucide="ban" class="w-4 h-4 text-rose-500"></i> Do NOT Do This
+                            </h4>
+                            <ul id="lr-donot" class="space-y-2"></ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="lookup-error"
+            class="hidden mt-4 glass-panel rounded-2xl px-6 py-4 border border-rose-500/30 text-rose-400 flex items-start gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <p id="lookup-error-msg">Something went wrong.</p>
+        </div>
     </div>
 
     <!-- Rules Grid -->
@@ -182,4 +272,114 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const CAT_STYLES = {
+        dry: { badge: 'bg-blue-500/20 text-blue-400 border-blue-500/30', banner: 'from-blue-500/10 to-blue-400/5' },
+        wet: { badge: 'bg-amber-500/20 text-amber-400 border-amber-500/30', banner: 'from-amber-500/10 to-amber-400/5' },
+        ewaste: { badge: 'bg-purple-500/20 text-purple-400 border-purple-500/30', banner: 'from-purple-500/10 to-purple-400/5' },
+        hazardous: { badge: 'bg-rose-500/20 text-rose-400 border-rose-500/30', banner: 'from-rose-500/10 to-rose-400/5' },
+        medical: { badge: 'bg-violet-500/20 text-violet-400 border-violet-500/30', banner: 'from-violet-500/10 to-violet-400/5' },
+        unknown: { badge: 'bg-slate-500/20 text-slate-400 border-slate-500/30', banner: 'from-slate-500/10 to-slate-400/5' },
+    };
+
+    async function runLookup() {
+        const input = document.getElementById('lookup-input');
+        const item = input.value.trim();
+        if (!item) { input.focus(); return; }
+
+        // UI: show loading
+        const btn = document.getElementById('lookup-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Thinking...</span>`;
+        lucide.createIcons();
+
+        document.getElementById('lookup-result').classList.add('hidden');
+        document.getElementById('lookup-error').classList.add('hidden');
+        document.getElementById('lookup-loading-bar').classList.remove('hidden');
+
+        try {
+            const res = await fetch('/api/lookup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ item })
+            });
+            const data = await res.json();
+
+            if (!data.success) throw new Error(data.message || 'Classification failed');
+
+            renderResult(data);
+
+        } catch (err) {
+            document.getElementById('lookup-error-msg').innerText = err.message;
+            document.getElementById('lookup-error').classList.remove('hidden');
+        } finally {
+            document.getElementById('lookup-loading-bar').classList.add('hidden');
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="sparkles" class="w-4 h-4"></i><span>Classify</span>`;
+            lucide.createIcons();
+        }
+    }
+
+    function renderResult(d) {
+        const cat = (d.category || 'unknown').toLowerCase();
+        const style = CAT_STYLES[cat] || CAT_STYLES.unknown;
+
+        // Banner
+        document.getElementById('lr-name').innerText = d.item || '--';
+        document.getElementById('lr-banner').className =
+            `p-6 bg-gradient-to-r ${style.banner} border-b border-white/5 flex flex-wrap justify-between items-center gap-4`;
+
+        // Category badge
+        const catBadge = document.getElementById('lr-category-badge');
+        catBadge.innerText = cat + ' Waste';
+        catBadge.className = `px-4 py-1.5 font-bold uppercase tracking-wider text-xs rounded-xl border ${style.badge}`;
+
+        // Recyclable badge
+        const recBadge = document.getElementById('lr-recyclable-badge');
+        if (d.recyclable) {
+            recBadge.innerText = '♻ Recyclable';
+            recBadge.className = 'px-4 py-1.5 font-bold text-xs rounded-xl border bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
+        } else {
+            recBadge.innerText = '✕ Non-Recyclable';
+            recBadge.className = 'px-4 py-1.5 font-bold text-xs rounded-xl border bg-rose-500/20 text-rose-400 border-rose-500/30';
+        }
+
+        // Text fields
+        document.getElementById('lr-instructions').innerText = d.instructions || '—';
+        document.getElementById('lr-reason').innerText = d.reason || '—';
+
+        // Risk
+        const risk = d.contamination_risk || 'Medium';
+        const riskEl = document.getElementById('lr-risk');
+        riskEl.innerText = risk;
+        if (risk === 'Low') riskEl.className = 'text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400';
+        else if (risk === 'High') riskEl.className = 'text-xs font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-400';
+        else riskEl.className = 'text-xs font-bold px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400';
+
+        // Tips
+        const tipsList = document.getElementById('lr-tips');
+        tipsList.innerHTML = (d.tips || []).map(t =>
+            `<li class="flex items-start gap-2 text-slate-300 text-sm">
+                <i data-lucide="check" class="w-4 h-4 text-primary shrink-0 mt-0.5"></i>${t}
+            </li>`
+        ).join('') || '<li class="text-slate-500 text-sm italic">No tips provided.</li>';
+
+        // Do Nots
+        const doNotList = document.getElementById('lr-donot');
+        doNotList.innerHTML = (d.do_not || []).map(t =>
+            `<li class="flex items-start gap-2 text-rose-300 text-sm">
+                <i data-lucide="x" class="w-4 h-4 text-rose-500 shrink-0 mt-0.5"></i>${t}
+            </li>`
+        ).join('') || '<li class="text-slate-500 text-sm italic">No warnings.</li>';
+
+        // Refresh icons and show
+        lucide.createIcons();
+        const resultEl = document.getElementById('lookup-result');
+        resultEl.classList.remove('hidden');
+        resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
 {% endblock %}

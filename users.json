@@ -14,7 +14,23 @@
     "state": "goa",
     "district": "north goa",
     "password": "8bb0cf6eb9b17d0f7d22b456f121257dc1254e1f01665370476383ea776df414",
-    "points": 0,
-    "joined": 1772256191
+    "points": 10,
+    "joined": 1772256191,
+    "exp": 20,
+    "level": 1
+  },
+  "suhaniii@gmail.com": {
+    "name": "suhani borkar",
+    "email": "suhaniii@gmail.com",
+    "state": "goa",
+    "district": "north goa",
+    "password": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+    "points": 20,
+    "exp": 40,
+    "level": 1,
+    "badges": [
+      "Novice Sorter"
+    ],
+    "joined": 1772264498
   }
 }

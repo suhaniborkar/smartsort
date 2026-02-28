@@ -1,4 +1,37 @@
 {
   "suhani@gmail.com": [],
-  "suhanii@gmail.com": []
+  "suhanii@gmail.com": [
+    {
+      "item": "Plastic Mesh Waste Basket",
+      "category": "dry",
+      "reason": "It is made of rigid plastic, which is a common dry, non-biodegradable material.",
+      "instructions": "Check for a recycling symbol on the base to confirm the plastic type. If accepted by local facilities, place it in the dry recycling bin.",
+      "points": 10,
+      "exp": 20,
+      "timestamp": 1772263876,
+      "time_label": "01:01 PM"
+    }
+  ],
+  "suhaniii@gmail.com": [
+    {
+      "item": "Plastic Waste Basket",
+      "category": "dry",
+      "reason": "Rigid plastic items are categorized as dry waste and are often recyclable depending on the material type.",
+      "instructions": "Place in your plastic recycling bin if it has a resin identification code (1-7). If not accepted locally, consider donating it if it's still in good condition.",
+      "points": 10,
+      "exp": 20,
+      "timestamp": 1772265307,
+      "time_label": "01:25 PM"
+    },
+    {
+      "item": "Gaming Mouse",
+      "category": "ewaste",
+      "reason": "It is an electronic device containing plastic and circuitry components that must be processed separately from household waste.",
+      "instructions": "Take this item to a designated e-waste collection center or an electronics retailer that offers recycling services. Do not place it in regular trash or standard recycling bins.",
+      "points": 10,
+      "exp": 20,
+      "timestamp": 1772264530,
+      "time_label": "01:12 PM"
+    }
+  ]
 }

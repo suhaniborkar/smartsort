@@ -1,0 +1,550 @@
+{% extends "base.html" %}
+{% block title %}Marketplace &mdash; SmartSort{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto space-y-8 fade-in">
+
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+            <h1
+                class="text-4xl font-display font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
+                Eco Marketplace
+            </h1>
+            <p class="text-slate-400 mt-1">Give second life to your recyclables — donate or sell to fellow eco-warriors.
+            </p>
+        </div>
+        <button onclick="openModal()"
+            class="bg-gradient-to-r from-primary to-emerald-400 hover:brightness-110 text-slate-900 font-bold px-6 py-3.5 rounded-2xl flex items-center gap-2 shadow-[0_0_25px_rgba(16,185,129,0.3)] transition-all hover:scale-105 active:scale-95 whitespace-nowrap">
+            <i data-lucide="plus-circle" class="w-5 h-5"></i> List an Item
+        </button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex flex-wrap items-center gap-3">
+        <div class="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+            <button id="tab-all" onclick="filterListings('all')"
+                class="tab-btn active px-5 py-2.5 rounded-xl text-sm font-bold transition-all">All</button>
+            <button id="tab-donate" onclick="filterListings('donate')"
+                class="tab-btn px-5 py-2.5 rounded-xl text-sm font-bold transition-all">
+                <span class="text-emerald-400">♻</span> Donate
+            </button>
+            <button id="tab-sell" onclick="filterListings('sell')"
+                class="tab-btn px-5 py-2.5 rounded-xl text-sm font-bold transition-all">
+                <span class="text-blue-400">💰</span> Sell
+            </button>
+        </div>
+        <div class="flex-1 glass-panel rounded-2xl flex items-center gap-3 px-4 py-2.5 max-w-sm">
+            <i data-lucide="search" class="text-slate-500 w-4 h-4 shrink-0"></i>
+            <input id="search-input" type="text" placeholder="Search listings..." onkeyup="applyFilters()"
+                class="bg-transparent border-none outline-none text-white w-full placeholder:text-slate-600 text-sm">
+        </div>
+        <div id="listing-count" class="text-slate-500 text-sm font-medium"></div>
+    </div>
+
+    <!-- Listings Grid -->
+    <div id="listings-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <!-- Skeleton Loaders -->
+        {% for i in range(8) %}
+        <div class="listing-skeleton glass-panel rounded-3xl overflow-hidden animate-pulse">
+            <div class="h-48 bg-white/5"></div>
+            <div class="p-5 space-y-3">
+                <div class="h-3 bg-white/5 rounded-full w-3/4"></div>
+                <div class="h-3 bg-white/5 rounded-full w-1/2"></div>
+                <div class="h-8 bg-white/5 rounded-xl w-full mt-4"></div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Empty State (hidden by default) -->
+    <div id="empty-state" class="hidden text-center py-24 space-y-4">
+        <div class="w-20 h-20 bg-white/3 rounded-3xl mx-auto flex items-center justify-center">
+            <i data-lucide="package-open" class="w-10 h-10 text-slate-700"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-500">No listings found</h3>
+        <p class="text-slate-600">Be the first to list a recyclable item!</p>
+        <button onclick="openModal()" class="text-primary font-bold hover:underline">List an item →</button>
+    </div>
+
+</div>
+
+<!-- ── CREATE LISTING MODAL ── -->
+<div id="modal-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);">
+    <div class="glass-panel rounded-[2rem] w-full max-w-lg shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto"
+        id="modal-box">
+
+        <!-- Modal Header -->
+        <div
+            class="flex justify-between items-center p-7 border-b border-white/5 sticky top-0 bg-[#0B0F19]/80 backdrop-blur-xl rounded-t-[2rem] z-10">
+            <div>
+                <h2 class="text-xl font-display font-bold text-white">List an Item</h2>
+                <p class="text-slate-500 text-sm">Help your community — donate or sell.</p>
+            </div>
+            <button onclick="closeModal()"
+                class="p-2 hover:bg-white/10 rounded-xl transition-colors text-slate-400 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Form -->
+        <form id="listing-form" onsubmit="submitListing(event)" class="p-7 space-y-5">
+
+            <!-- Type Toggle -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Listing
+                    Type</label>
+                <div class="flex bg-white/5 border border-white/10 rounded-2xl p-1 gap-1">
+                    <button type="button" id="type-donate-btn" onclick="selectType('donate')"
+                        class="type-btn active flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="heart" class="w-4 h-4"></i> Donate (Free)
+                    </button>
+                    <button type="button" id="type-sell-btn" onclick="selectType('sell')"
+                        class="type-btn flex-1 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="tag" class="w-4 h-4"></i> Sell
+                    </button>
+                </div>
+                <input type="hidden" id="listing-type" name="type" value="donate">
+            </div>
+
+            <!-- Image Upload -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Photo</label>
+                <div id="img-drop-zone" onclick="document.getElementById('img-file-input').click()"
+                    class="relative border-2 border-dashed border-white/10 hover:border-primary/50 rounded-2xl transition-all cursor-pointer group overflow-hidden min-h-[160px] flex items-center justify-center">
+                    <div id="img-placeholder" class="text-center p-8">
+                        <div
+                            class="w-12 h-12 bg-white/5 rounded-2xl mx-auto flex items-center justify-center mb-3 group-hover:bg-primary/10 transition-colors">
+                            <i data-lucide="upload-cloud"
+                                class="w-6 h-6 text-slate-500 group-hover:text-primary transition-colors"></i>
+                        </div>
+                        <p class="text-slate-500 text-sm">Click to upload a photo <span
+                                class="text-slate-700 block text-xs mt-1">JPG, PNG, WEBP up to 5MB</span></p>
+                    </div>
+                    <img id="img-preview" src="" alt="" class="hidden absolute inset-0 w-full h-full object-cover">
+                    <input type="file" id="img-file-input" name="image" accept="image/*" class="hidden"
+                        onchange="previewImage(event)">
+                </div>
+                <p id="img-label" class="text-xs text-slate-600 mt-1.5 hidden text-right">Photo selected ✓</p>
+            </div>
+
+            <!-- Title -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Item Title</label>
+                <input type="text" name="title" required placeholder="e.g. Old Newspaper Bundle, Plastic Cans"
+                    class="glass-input w-full px-4 py-3 rounded-2xl text-sm">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Description</label>
+                <textarea name="description" rows="3" placeholder="Condition, quantity, any notes..."
+                    class="glass-input w-full px-4 py-3 rounded-2xl text-sm resize-none"></textarea>
+            </div>
+
+            <!-- Category + Price Row -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label
+                        class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Category</label>
+                    <select name="category"
+                        class="glass-input w-full px-4 py-3 rounded-2xl text-sm bg-black/30 cursor-pointer">
+                        <option value="plastic">Plastic</option>
+                        <option value="paper">Paper / Cardboard</option>
+                        <option value="metal">Metal</option>
+                        <option value="glass">Glass</option>
+                        <option value="ewaste">E-Waste</option>
+                        <option value="fabric">Fabric / Clothes</option>
+                        <option value="furniture">Furniture</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div id="price-field" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Price
+                        (₹)</label>
+                    <input type="number" name="price" min="0" placeholder="e.g. 50"
+                        class="glass-input w-full px-4 py-3 rounded-2xl text-sm">
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Pickup / Drop-off
+                    Location</label>
+                <div class="relative">
+                    <i data-lucide="map-pin"
+                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+                    <input type="text" name="location" required placeholder="e.g. Koramangala, Bengaluru"
+                        class="glass-input w-full pl-10 pr-4 py-3 rounded-2xl text-sm">
+                </div>
+            </div>
+
+            <!-- Contact Details -->
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Contact Number
+                    <span class="text-slate-600 font-normal normal-case tracking-normal">(shown to
+                        buyers)</span></label>
+                <div class="relative">
+                    <i data-lucide="phone"
+                        class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none"></i>
+                    <input type="tel" name="phone" placeholder="e.g. +91 98765 43210"
+                        class="glass-input w-full pl-10 pr-4 py-3 rounded-2xl text-sm">
+                </div>
+                <p class="text-[11px] text-slate-600 mt-1.5">Leave blank to share only your email address.</p>
+            </div>
+
+            <!-- Error -->
+            <div id="form-error"
+                class="hidden text-rose-400 text-sm bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="submit-btn"
+                class="w-full bg-gradient-to-r from-primary to-emerald-400 hover:brightness-110 text-slate-900 font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                <i data-lucide="upload" class="w-5 h-5"></i> Publish Listing
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ── LISTING DETAIL MODAL ── -->
+<div id="detail-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+    style="background: rgba(0,0,0,0.75); backdrop-filter: blur(12px);">
+    <div class="glass-panel rounded-[2rem] w-full max-w-lg shadow-2xl border border-white/10 overflow-hidden"
+        id="detail-box">
+        <div class="relative">
+            <img id="detail-img" src="" alt="" class="w-full h-56 object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+            <button onclick="closeDetail()"
+                class="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black/80 rounded-xl transition-colors text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="absolute bottom-0 left-0 p-6">
+                <span id="detail-type-badge" class="text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block"></span>
+                <h2 id="detail-title" class="text-2xl font-display font-bold text-white"></h2>
+            </div>
+        </div>
+        <div class="p-6 space-y-4">
+            <p id="detail-desc" class="text-slate-400 leading-relaxed"></p>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="flex items-center gap-2 text-slate-400">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-primary shrink-0"></i>
+                    <span id="detail-location"></span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400">
+                    <i data-lucide="user" class="w-4 h-4 text-blue-400 shrink-0"></i>
+                    <span id="detail-seller"></span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400">
+                    <i data-lucide="calendar" class="w-4 h-4 text-slate-500 shrink-0"></i>
+                    <span id="detail-date"></span>
+                </div>
+                <div class="flex items-center gap-2 font-bold text-lg" id="detail-price-row">
+                    <i data-lucide="tag" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                    <span id="detail-price" class="text-emerald-400"></span>
+                </div>
+            </div>
+
+            <!-- Contact Actions -->
+            <div class="border-t border-white/5 pt-4 space-y-3">
+                <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Contact the Seller</p>
+                <div class="flex flex-col gap-2" id="detail-contact-actions">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Owner Delete -->
+            <button id="detail-delete-btn" onclick="deleteListing()"
+                class="hidden w-full bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 py-3 rounded-2xl transition-colors flex items-center justify-center gap-2 text-sm font-bold">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Remove Listing
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<style>
+    .tab-btn {
+        color: #94a3b8;
+    }
+
+    .tab-btn.active {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+
+    .type-btn {
+        color: #94a3b8;
+    }
+
+    .type-btn.active {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+    }
+</style>
+<script>
+    let allListings = [];
+    let activeFilter = 'all';
+    let activeDetail = null;
+
+    // ── LOAD LISTINGS ──────────────────────────────────────────────
+    async function loadListings() {
+        try {
+            const res = await fetch('/api/marketplace/listings');
+            const data = await res.json();
+            allListings = data.listings || [];
+            renderListings(allListings);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function applyFilters() {
+        const q = document.getElementById('search-input').value.toLowerCase();
+        const filtered = allListings.filter(l => {
+            const matchType = activeFilter === 'all' || l.type === activeFilter;
+            const matchQ = !q || l.title.toLowerCase().includes(q) || l.location.toLowerCase().includes(q) || l.category.toLowerCase().includes(q);
+            return matchType && matchQ;
+        });
+        renderListings(filtered);
+    }
+
+    function filterListings(type) {
+        activeFilter = type;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tab-${type}`).classList.add('active');
+        applyFilters();
+    }
+
+    const CAT_ICONS = {
+        plastic: 'package', paper: 'file-text', metal: 'layers',
+        glass: 'wine', ewaste: 'cpu', fabric: 'shirt', furniture: 'armchair', other: 'box'
+    };
+
+    function renderListings(listings) {
+        // Remove skeletons
+        document.querySelectorAll('.listing-skeleton').forEach(el => el.remove());
+        document.getElementById('listing-count').textContent = `${listings.length} listing${listings.length !== 1 ? 's' : ''}`;
+
+        const grid = document.getElementById('listings-grid');
+        const empty = document.getElementById('empty-state');
+
+        if (listings.length === 0) {
+            grid.innerHTML = '';
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+
+        const myEmail = getCookie('user_email') || '';
+
+        grid.innerHTML = listings.map(l => {
+            const isMyListing = l.seller_email === myEmail;
+            const isDonate = l.type === 'donate';
+            const typeClass = isDonate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400';
+            const typeLabel = isDonate ? '♻ Free' : `₹${l.price}`;
+            const catIcon = CAT_ICONS[l.category] || 'box';
+
+            const imgHTML = l.image_url
+                ? `<img src="${l.image_url}" class="w-full h-48 object-cover" loading="lazy">`
+                : `<div class="w-full h-48 flex items-center justify-center bg-white/3">
+                    <i data-lucide="${catIcon}" class="w-16 h-16 text-white/10"></i>
+               </div>`;
+
+            return `
+        <div class="listing-card glass-panel rounded-3xl overflow-hidden border border-white/5 hover:border-primary/30 transition-all group hover:shadow-[0_0_30px_rgba(16,185,129,0.1)] cursor-pointer flex flex-col"
+             data-id="${l.id}" onclick="openDetail('${l.id}')">
+            <div class="relative overflow-hidden">
+                ${imgHTML}
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <span class="absolute top-3 left-3 ${typeClass} text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">${typeLabel}</span>
+                ${isMyListing ? `<span class="absolute top-3 right-3 bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30">Your listing</span>` : ''}
+            </div>
+            <div class="p-5 flex flex-col flex-1">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <h3 class="font-bold text-white group-hover:text-primary transition-colors line-clamp-2 leading-snug">${l.title}</h3>
+                </div>
+                ${l.description ? `<p class="text-slate-500 text-sm line-clamp-2 mb-3">${l.description}</p>` : ''}
+                <div class="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-600">
+                    <span class="flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>${l.location}</span>
+                    <span class="flex items-center gap-1"><i data-lucide="user" class="w-3 h-3"></i>${l.seller_name}</span>
+                </div>
+            </div>
+        </div>`;
+        }).join('');
+
+        lucide.createIcons();
+    }
+
+    // ── DETAIL MODAL ───────────────────────────────────────────────
+    function openDetail(id) {
+        const l = allListings.find(x => x.id === id);
+        if (!l) return;
+        activeDetail = l;
+
+        const myEmail = getCookie('user_email') || '';
+        const isDonate = l.type === 'donate';
+
+        document.getElementById('detail-img').src = l.image_url || '';
+        document.getElementById('detail-img').style.display = l.image_url ? 'block' : 'none';
+        document.getElementById('detail-title').textContent = l.title;
+        document.getElementById('detail-desc').textContent = l.description || 'No description provided.';
+        document.getElementById('detail-location').textContent = l.location;
+        document.getElementById('detail-seller').textContent = l.seller_name;
+        document.getElementById('detail-date').textContent = l.time_label;
+
+        const priceBadge = document.getElementById('detail-type-badge');
+        priceBadge.textContent = isDonate ? '♻ Free to Take' : `For Sale`;
+        priceBadge.className = `text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block ${isDonate ? 'bg-emerald-500/30 text-emerald-300' : 'bg-blue-500/30 text-blue-300'}`;
+
+        document.getElementById('detail-price').textContent = isDonate ? 'Free' : `₹${l.price}`;
+
+        // Build contact action buttons
+        const contactDiv = document.getElementById('detail-contact-actions');
+        contactDiv.innerHTML = '';
+
+        // Email button — always present
+        contactDiv.innerHTML += `
+        <a href="mailto:${l.seller_email}?subject=Interested in &quot;${l.title}&quot; on SmartSort"
+            class="flex items-center gap-3 p-3.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-2xl transition-all group">
+            <div class="w-9 h-9 bg-blue-500/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-500/30 transition-colors">
+                <i data-lucide="mail" class="w-4 h-4 text-blue-400"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-0.5">Email</p>
+                <p class="text-blue-300 font-bold text-sm truncate">${l.seller_email}</p>
+            </div>
+            <i data-lucide="external-link" class="w-4 h-4 text-slate-600 shrink-0"></i>
+        </a>`;
+
+        // Phone button — only if provided
+        if (l.seller_phone) {
+            contactDiv.innerHTML += `
+        <a href="tel:${l.seller_phone.replace(/\s/g, '')}"
+            class="flex items-center gap-3 p-3.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-2xl transition-all group">
+            <div class="w-9 h-9 bg-emerald-500/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-emerald-500/30 transition-colors">
+                <i data-lucide="phone" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div class="flex-1">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-600 mb-0.5">Phone / WhatsApp</p>
+                <p class="text-emerald-300 font-bold text-sm">${l.seller_phone}</p>
+            </div>
+            <i data-lucide="external-link" class="w-4 h-4 text-slate-600 shrink-0"></i>
+        </a>`;
+        }
+
+        // Show delete if owner
+        const delBtn = document.getElementById('detail-delete-btn');
+        if (l.seller_email === myEmail) delBtn.classList.remove('hidden');
+        else delBtn.classList.add('hidden');
+
+        document.getElementById('detail-overlay').classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    function closeDetail() {
+        document.getElementById('detail-overlay').classList.add('hidden');
+        activeDetail = null;
+    }
+
+    async function deleteListing() {
+        if (!activeDetail || !confirm('Remove this listing?')) return;
+        const myEmail = getCookie('user_email') || '';
+        try {
+            const res = await fetch(`/api/marketplace/delete/${activeDetail.id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: myEmail })
+            });
+            const data = await res.json();
+            if (data.success) {
+                closeDetail();
+                await loadListings();
+            } else alert(data.message);
+        } catch (e) { alert('Failed to delete listing.'); }
+    }
+
+    // ── CREATE MODAL ───────────────────────────────────────────────
+    function openModal() {
+        const user = getCookie('user_email');
+        if (!user) { alert('Please sign in to list items.'); return; }
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+    function closeModal() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function selectType(type) {
+        document.getElementById('listing-type').value = type;
+        document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`type-${type}-btn`).classList.add('active');
+        document.getElementById('price-field').classList.toggle('hidden', type === 'donate');
+    }
+
+    function previewImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            document.getElementById('img-preview').src = ev.target.result;
+            document.getElementById('img-preview').classList.remove('hidden');
+            document.getElementById('img-placeholder').classList.add('hidden');
+            document.getElementById('img-label').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function submitListing(e) {
+        e.preventDefault();
+        const btn = document.getElementById('submit-btn');
+        const err = document.getElementById('form-error');
+        err.classList.add('hidden');
+
+        const myEmail = getCookie('user_email');
+        if (!myEmail) { err.textContent = 'Please sign in first.'; err.classList.remove('hidden'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Publishing...`;
+        lucide.createIcons();
+
+        const form = document.getElementById('listing-form');
+        const fd = new FormData(form);
+        fd.append('email', myEmail);
+
+        try {
+            const res = await fetch('/api/marketplace/create', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Failed to create listing');
+            closeModal();
+            form.reset();
+            // Reset image preview
+            document.getElementById('img-preview').classList.add('hidden');
+            document.getElementById('img-placeholder').classList.remove('hidden');
+            document.getElementById('img-label').classList.add('hidden');
+            selectType('donate');
+            await loadListings();
+        } catch (ex) {
+            err.textContent = ex.message;
+            err.classList.remove('hidden');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="upload" class="w-5 h-5"></i> Publish Listing`;
+            lucide.createIcons();
+        }
+    }
+
+    // Close modals on overlay click
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('modal-overlay')) closeModal();
+    });
+    document.getElementById('detail-overlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('detail-overlay')) closeDetail();
+    });
+
+    // Init
+    document.addEventListener('DOMContentLoaded', loadListings);
+</script>
+{% endblock %}

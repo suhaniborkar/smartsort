@@ -84,6 +84,70 @@ def classify_waste(image_bytes):
             "error": str(e)
         }
 
+
+def classify_waste_by_name(item_name: str):
+    """
+    Takes an item name as text (e.g., 'AA Battery', 'Pizza Box'),
+    queries Gemini for classification and safe disposal instructions.
+    """
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return {"error": "Gemini API key is not configured.", "success": False}
+
+    client = genai.Client(api_key=api_key)
+
+    prompt = f"""
+    You are an expert waste sorting assistant. A user wants to know how to safely dispose of the following item: "{item_name}".
+    
+    Respond with ONLY a raw JSON object (no markdown, no code fences) with these exact keys:
+    - "item": The official/clean name of the item.
+    - "category": One of: ["dry", "wet", "ewaste", "hazardous", "medical", "unknown"].
+    - "recyclable": Boolean (true/false).
+    - "confidence": 0 to 1 float indicating classification confidence.
+    - "instructions": 1 to 2 clear sentences on HOW to dispose of this item safely.
+    - "reason": 1 sentence WHY it belongs in this category.
+    - "contamination_risk": Strictly one of: "Low", "Medium", or "High".
+    - "tips": Array of 2 to 3 short actionable preparation tips (e.g. ["Drain all liquid", "Remove the label"]).
+    - "do_not": Array of 1 to 2 things the user should absolutely NOT do (e.g. ["Do not throw in general trash", "Do not pour down drain"]).
+
+    Example:
+    {{
+      "item": "AA Battery",
+      "category": "hazardous",
+      "recyclable": false,
+      "confidence": 0.97,
+      "instructions": "Take to a designated battery collection point or e-waste facility. Never dispose of in regular household bins.",
+      "reason": "Batteries contain toxic heavy metals like cadmium and lead that can contaminate soil and water.",
+      "contamination_risk": "High",
+      "tips": ["Store in a cool, dry place until you can drop them off", "Keep terminals from touching metal objects", "Many supermarkets have free battery drop-off boxes"],
+      "do_not": ["Do not throw in general waste", "Do not puncture or burn batteries"]
+    }}
+    """
+
+    try:
+        response = client.models.generate_content(
+            model='gemini-3-flash-preview',
+            contents=prompt
+        )
+        text = response.text.strip()
+        if text.startswith('```json'):
+            text = text[7:]
+        if text.startswith('```'):
+            text = text[3:]
+        if text.endswith('```'):
+            text = text[:-3]
+
+        data = json.loads(text.strip())
+        data["success"] = True
+        return data
+
+    except Exception as e:
+        print(f"Error in classify_waste_by_name: {e}")
+        return {"success": False, "error": str(e)}
+
 if __name__ == "__main__":
     # Quick self-test to verify the setup if run directly
     print("🚀 Running Gemini Helper Self-Test...")
